@@ -2,8 +2,8 @@ from ollama import chat, ChatResponse
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes, CommandHandler
 
-TELEGRAM_TOKEN = "YOUR_TELEGRAM_TOKEN_HERE"
-MODEL = "gemma4:31b"
+TELEGRAM_TOKEN = "TELEGRAM_TOKEN"
+MODEL = "gemma3:1b"
 
 SYSTEM_PROMPT = """You are an expert AI prompt engineer specializing in:
 1. Image generation prompts (Seedream, Stable Diffusion, Flux, Midjourney)
