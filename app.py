@@ -1,9 +1,10 @@
-from ollama import chat, ChatResponse
+import os
+import requests
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes, CommandHandler
 
-TELEGRAM_TOKEN = "TELEGRAM_TOKEN"
-MODEL = "gemma3:1b"
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+FAL_KEY = os.environ.get("FAL_KEY")
 
 SYSTEM_PROMPT = """You are an expert AI prompt engineer specializing in:
 1. Image generation prompts (Seedream, Stable Diffusion, Flux, Midjourney)
@@ -23,18 +24,26 @@ user_history = {}
 
 def get_history(user_id):
     if user_id not in user_history:
-        user_history[user_id] = [
-            {"role": "system", "content": SYSTEM_PROMPT}
-        ]
+        user_history[user_id] = []
     return user_history[user_id]
 
-# ─── Chat dengan Ollama ───
-def chat_ollama(messages):
-    response: ChatResponse = chat(
-        model=MODEL,
-        messages=messages
-    )
-    return response.message.content
+# ─── Chat dengan fal.ai ───
+def chat_fal(messages, user_message):
+    url = "https://fal.run/fal-ai/any-llm"
+    headers = {
+        "Authorization": f"Key {FAL_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "anthropic/claude-3-5-sonnet",
+        "system_prompt": SYSTEM_PROMPT,
+        "messages": messages,
+        "prompt": user_message
+    }
+    response = requests.post(url, json=payload, headers=headers)
+    data = response.json()
+    print("Response:", data)
+    return data.get("output") or data.get("response") or data.get("text") or str(data)
 
 # ─── Handler /start ───
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -54,9 +63,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ─── Handler /clear ───
 async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    user_history[user_id] = [
-        {"role": "system", "content": SYSTEM_PROMPT}
-    ]
+    user_history[user_id] = []
     await update.message.reply_text("🗑️ History cleared! Boleh start baru.")
 
 # ─── Handler /help ───
@@ -85,15 +92,16 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         history = get_history(user_id)
+
+        reply = chat_fal(history, user_message)
+
+        # Simpan dalam history
         history.append({"role": "user", "content": user_message})
-
-        reply = chat_ollama(history)
-
         history.append({"role": "assistant", "content": reply})
 
-        # Limit history
-        if len(history) > 21:
-            history = [history[0]] + history[-20:]
+        # Limit history — simpan 10 pasang je
+        if len(history) > 20:
+            history = history[-20:]
             user_history[user_id] = history
 
         await thinking.delete()
@@ -102,12 +110,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print("Error:", e)
         await thinking.delete()
-        await update.message.reply_text(
-            "❌ Gagal connect ke Ollama.\n\n"
-            "Pastikan Ollama running:\n"
-            "`ollama serve`",
-            parse_mode="Markdown"
-        )
+        await update.message.reply_text(f"❌ Error: {e}")
 
 # ─── Run Bot ───
 def main():
