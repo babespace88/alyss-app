@@ -6,13 +6,13 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTyp
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 FAL_KEY = os.environ.get("FAL_KEY")
 
-SYSTEM_PROMPT = """You are a friendly AI prompt engineer assistant. 
+SYSTEM_PROMPT = """You are a friendly AI prompt assistant. 
 
 When users greet you (hi, hello, hey, helo, hai, salam, etc), respond warmly and explain what you can help with in their language.
 
 You specialize in:
-1. Image generation prompts (Seedream, Stable Diffusion, Flux, Midjourney)
-2. Video generation prompts (Seedance, Kling, Hailuo)
+1. Image generation prompts 
+2. Video generation prompts 
 
 Your job is to help users:
 - Create detailed, effective prompts for image generation
