@@ -6,7 +6,11 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTyp
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 FAL_KEY = os.environ.get("FAL_KEY")
 
-SYSTEM_PROMPT = """You are an expert AI prompt engineer specializing in:
+SYSTEM_PROMPT = """You are a friendly AI prompt engineer assistant. 
+
+When users greet you (hi, hello, hey, helo, hai, salam, etc), respond warmly and explain what you can help with in their language.
+
+You specialize in:
 1. Image generation prompts (Seedream, Stable Diffusion, Flux, Midjourney)
 2. Video generation prompts (Seedance, Kling, Hailuo)
 
@@ -19,7 +23,6 @@ Your job is to help users:
 Always respond in the same language as the user.
 When suggesting prompts, format them clearly and explain what each part does."""
 
-# ─── Simpan history per user ───
 user_history = {}
 
 def get_history(user_id):
@@ -27,7 +30,6 @@ def get_history(user_id):
         user_history[user_id] = []
     return user_history[user_id]
 
-# ─── Chat dengan fal.ai ───
 def chat_fal(messages, user_message):
     url = "https://fal.run/fal-ai/any-llm"
     headers = {
@@ -35,7 +37,7 @@ def chat_fal(messages, user_message):
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "anthropic/claude-3-5-sonnet",
+        "model": "anthropic/claude-3.5-sonnet",  # fix model name
         "system_prompt": SYSTEM_PROMPT,
         "messages": messages,
         "prompt": user_message
@@ -45,28 +47,27 @@ def chat_fal(messages, user_message):
     print("Response:", data)
     return data.get("output") or data.get("response") or data.get("text") or str(data)
 
-# ─── Handler /start ───
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🤖 *AI Prompt Assistant*\n\n"
-        "Saya boleh bantu awak buat prompt untuk:\n\n"
-        "🎨 *Image Generation*\n"
+        "👋 *Hai! Apa yang boleh saya bantu?*\n\n"
+        "Saya boleh bantu awak dengan:\n\n"
+        "🎨 *Buat prompt image*\n"
         "_'buat prompt gambar wanita di Tokyo malam hari'_\n\n"
-        "🎬 *Video Generation*\n"
+        "🎬 *Buat prompt video*\n"
         "_'buat motion prompt perempuan melambai'_\n\n"
-        "✨ *Improve Prompt*\n"
+        "✨ *Improve prompt sedia ada*\n"
         "_'improve prompt ni: a girl in park'_\n\n"
-        "Taip je apa yang awak nak! 🚀",
+        "💡 *Minta idea prompt*\n"
+        "_'cadangkan prompt untuk product photography'_\n\n"
+        "Taip je apa yang awak nak! 😊",
         parse_mode="Markdown"
     )
 
-# ─── Handler /clear ───
 async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_history[user_id] = []
     await update.message.reply_text("🗑️ History cleared! Boleh start baru.")
 
-# ─── Handler /help ───
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📚 *Cara Guna Bot*\n\n"
@@ -83,7 +84,6 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
-# ─── Handler teks ───
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_message = update.message.text
@@ -92,14 +92,11 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         history = get_history(user_id)
-
         reply = chat_fal(history, user_message)
 
-        # Simpan dalam history
         history.append({"role": "user", "content": user_message})
         history.append({"role": "assistant", "content": reply})
 
-        # Limit history — simpan 10 pasang je
         if len(history) > 20:
             history = history[-20:]
             user_history[user_id] = history
@@ -112,7 +109,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await thinking.delete()
         await update.message.reply_text(f"❌ Error: {e}")
 
-# ─── Run Bot ───
 def main():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
